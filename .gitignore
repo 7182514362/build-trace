@@ -1,0 +1,8 @@
+**/debug/**
+**/build/**
+**/.vscode/**
+debug
+test/**
+*.o
+*.so
+*.a
