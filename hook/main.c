@@ -38,16 +38,24 @@ void add_gcc_plugin_arg() {
     if (new_argv == NULL) {
         return;
     }
-    int ret = snprintf(g_gcc_plugin_arg, ARG_MAX_LEN, "-fplugin=%s -fplugin-arg-libssa-cmdid=%d", plugin_path, g_trace_cmd->cid);
+    new_argv[0] = bt_copy_string(g_trace_cmd->argv[0]);
+    int ret = snprintf(g_gcc_plugin_arg, ARG_MAX_LEN, "-fplugin=%s", plugin_path);
     if (ret < 0) {
         free(new_argv);
         return;
     }
-    int i;
-    for (i = 0; i < g_trace_cmd->argc; ++i) {
-        new_argv[i] = g_trace_cmd->argv[i];
+    new_argv[1] = bt_copy_string(g_gcc_plugin_arg);
+    ret = snprintf(g_gcc_plugin_arg, ARG_MAX_LEN, "-fplugin-arg-ssagcc-cmdid=%d", g_trace_cmd->cid);
+    if (ret < 0) {
+        free(new_argv);
+        return;
     }
-    new_argv[i] = g_gcc_plugin_arg;
+    new_argv[2] = bt_copy_string(g_gcc_plugin_arg);
+    int i;
+    for (i = 3; i < g_trace_cmd->argc; ++i) {
+        new_argv[i] = bt_copy_string(g_trace_cmd->argv[i]);
+    }
+    // new_argv[i] = g_gcc_plugin_arg;
     g_trace_cmd->nargc = g_trace_cmd->argc + 1;
     g_trace_cmd->nargv = new_argv;
 }
@@ -72,14 +80,15 @@ static int before_main() {
         LOG_ERROR("get command id failed");
         return -1;
     }
+    bt_close_db(db);
     char buf[32] = {0};
     sprintf(buf, "%d", cmd_id);
     setenv("BT_CMD_ID", buf, 1);
 
-    bt_close_db(db);
     g_trace_cmd->cid = cmd_id;
     if (g_trace_cmd->type == GCC_CMD) {
-        // add_gcc_plugin_arg();
+        LOG_ERROR("++++++ %s", g_trace_cmd->argv[0]);
+        add_gcc_plugin_arg();
     }
     return 0;
 }
@@ -100,6 +109,11 @@ static int after_main() {
 
 int main_hook(int argc, char **argv, char **envp) {
     int saved_errno = errno;
+    if (bt_need_trace(argv[0]) == 0) {
+        errno = saved_errno;
+        return g_orig_main(argc, argv, envp);
+    }
+    // fprintf(stderr, "argv[0]: %s, %d\n", argv[0], getpid());
     g_trace_env = bt_init_env(argc, argv, envp);
     if (g_trace_env == NULL) {
         fprintf(stderr, "init env failed");

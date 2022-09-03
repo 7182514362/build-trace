@@ -12,6 +12,15 @@ public:
         m_symbolRef[caller].push_back(callee);
     }
 
+    bool HasRefs(uint32_t id) {
+        return m_symbolRef.find(id) != m_symbolRef.end();
+    }
+
+    const std::vector<uint32_t> *GetRefs(uint32_t id) {
+        auto itor = m_symbolRef.find(id);
+        return (itor == m_symbolRef.end()) ? nullptr : &(itor->second);
+    }
+
     void ForEachSymRef(std::function<void(uint32_t from, std::vector<uint32_t> &to)> handler) {
         for (auto &pair : m_symbolRef) {
             handler(pair.first, pair.second);

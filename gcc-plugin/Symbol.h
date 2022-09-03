@@ -7,9 +7,10 @@
 
 struct Symbol {
     uint32_t id{0};
-    uint8_t type{0};
+    uint64_t type{0};
     std::string name;
     std::string_view asmname;
+    std::string_view file;
     int file_id;
     uint32_t line{0};
     uint32_t column{0};

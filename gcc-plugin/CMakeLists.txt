@@ -5,8 +5,10 @@ EXECUTE_PROCESS(
     OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 MESSAGE(STATUS "GCC_PLUGIN_PATH: ${GCC_PLUGIN_PATH}")
-add_library(ssa SHARED main.cpp Symbol.cpp SymbolTable.cpp SymbolRefTable.cpp FileManager.cpp DBUtil.cpp Log.cpp Global.cpp)
+set(TARGET ssagcc)
+add_library(${TARGET} SHARED main.cpp Symbol.cpp SymbolTable.cpp SymbolRefTable.cpp FileManager.cpp DBUtil.cpp Log.cpp Global.cpp)
+set_target_properties(${TARGET} PROPERTIES PREFIX "")
 
-target_include_directories(ssa PUBLIC "${GCC_PLUGIN_PATH}/include")
-target_link_libraries(ssa sqlite3)
-redefine_file_macro(ssa)
+target_include_directories(${TARGET} PUBLIC "${GCC_PLUGIN_PATH}/include")
+target_link_libraries(${TARGET} sqlite3)
+redefine_file_macro(${TARGET})

@@ -17,8 +17,10 @@ std::string Symbol::Demangle(std::string_view mangled) {
 
 std::string Symbol::DumpStr() {
     std::stringstream ret;
-    ret << "[id: " << id << ", type: " << type << ", name: "
-        << name << ", asmname: " << asmname << ", file: " << file_id
-        << ", line" << line << ", isDef: " << isDef << ", isBuiltin: " << isBuiltin << "]";
+    // ret << "[id: " << id << ", type: " << type << ", name: "
+    //     << name /*<< ", asmname: " << asmname*/ << ", file: " << file
+    //     << ", line" << line << ", isDef: " << isDef << ", isBuiltin: " << isBuiltin << "]";
+    ret << id << ", " << name << ", [" << file
+        << ":" << line << ", isDef: " << isDef << ", isBuiltin: " << isBuiltin << "]";
     return ret.str();
 }

@@ -1,7 +1,12 @@
-#include "util.h"
+
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <libgen.h>
+
+#include "util.h"
 
 char *bt_malloc_and_init(int size) {
     if (size <= 0) {
@@ -55,4 +60,41 @@ int bt_end_with(const char *target, const char *suffix) {
         --j;
     }
     return 1;
+}
+
+void bt_lock_file(FILE *fp) {
+    struct flock lock;
+    memset(&lock, 0, sizeof(lock));
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    fcntl(fileno(fp), F_SETLKW, &lock);
+}
+
+void bt_unlock_file(FILE *fp) {
+    struct flock lock;
+    memset(&lock, 0, sizeof(lock));
+    lock.l_type = F_UNLCK;
+    lock.l_whence = SEEK_SET;
+    fcntl(fileno(fp), F_SETLK, &lock);
+}
+
+static const char *g_ignore_cmd[] = {"objdump", "head", "tail", "xargs", "rm", "tar", "ls", "pwd",
+                                     "basename", "expr", "realpath", "file", "mkdir", "uname", "grep",
+                                     "sed", "cat", "sort", "find", "md5sum", "sha256sum", "chmod", "chown",
+                                     "gzip", "man", "perl", NULL};
+
+static const char *g_trace_cmd[] = {"cc", "c++", "gcc", "g++", "gcc-7", "g++-7", "gcc-9", "g++-9", "xgcc", "xg++", "cc1", "cc1plus", "as", "collect2", "ld", "gold", "ar", "ld.gold",
+                                    "ld.bfd", "ld.bsd", "lld", "objcopy", "cp", "mv", "strip", NULL};
+
+int bt_need_trace(char *exec) {
+    if (exec == NULL) {
+        return 0;
+    }
+    int i = 0;
+    for (; g_trace_cmd[i] != NULL; ++i) {
+        if (bt_end_with(exec, g_trace_cmd[i])) {
+            return 1;
+        }
+    }
+    return 0;
 }

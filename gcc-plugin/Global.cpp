@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include "Global.h"
 
+static void CreateDir(const std::string &path) {
+}
+
 bool Global::Init(int cmdId) {
     char *outPath = std::getenv("BT_OUT_PATH");
     if (outPath == nullptr || *outPath == 0) {

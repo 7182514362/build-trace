@@ -25,6 +25,7 @@ static struct cmd_entry g_cmd_map[] = {
     {"gcc", GCC_CMD},
     {"g++", GCC_CMD},
     {"cc", GCC_CMD},
+    {"c++", GCC_CMD},
     {"CC", GCC_CMD},
     {"ld.bfd", LD_CMD},
     {"ld.gold", LD_CMD},

@@ -10,4 +10,4 @@ enable_testing()
 
 add_subdirectory(hook)
 add_subdirectory(gcc-plugin)
-add_subdirectory(test)
+# add_subdirectory(test)

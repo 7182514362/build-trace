@@ -10,7 +10,7 @@
 
 static int handle_busy(void *a, int b) {
     usleep(5000);
-    return 0;
+    return 1;
 }
 
 sqlite3 *bt_open_db(const char *file) {
@@ -20,6 +20,7 @@ sqlite3 *bt_open_db(const char *file) {
         return NULL;
     }
     sqlite3_busy_handler(db, handle_busy, NULL);
+    sqlite3_exec(db, "PRAGMA cache_size=8000;PRAGMA synchronous=OFF;PRAGMA temp_store=MEMORY;", NULL, NULL, NULL);
     return db;
 }
 
@@ -35,9 +36,9 @@ int bt_create_table(sqlite3 *db) {
     }
     char *errmsg;
     const char *sql = "CREATE TABLE IF NOT EXISTS command (\
-        cid      INTEGER     PRIMARY KEY  AUTOINCREMENT,\
-        time    TEXT    NOT NULL,\
-        command TEXT    NOT NULL,\
+        cid INTEGER PRIMARY KEY AUTOINCREMENT,\
+        time TEXT NOT NULL,\
+        command TEXT,\
         pcid INT NOT NULL,\
         pid INT NOT NULL,\
         ppid INT NOT NULL);";
@@ -55,7 +56,7 @@ int bt_create_workspace_tbl(sqlite3 *db) {
     }
     char *errmsg;
     const char *sql = "CREATE TABLE IF NOT EXISTS workspace (\
-        id INTEGER PRIMARY KEY  AUTOINCREMENT,\
+        id INTEGER PRIMARY KEY AUTOINCREMENT,\
         path TEXT NOT NULL\
     );";
     int err = sqlite3_exec(db, sql, 0, 0, &errmsg);
@@ -100,19 +101,24 @@ int bt_insert_command(sqlite3 *db, struct bt_command *cmd) {
     get_format_time(time_str, sizeof(time_str));
     char *cmd_str;
     int len = get_cmd_str(cmd, &cmd_str);
-    int buf_len = len + 128;
-    char *buf = bt_malloc_and_init(buf_len);
-    snprintf(buf, buf_len, "INSERT INTO command(time,command,pcid,pid,ppid) VALUES('%s','%s',%d,%d,%d);", time_str, cmd_str, cmd->pcid, cmd->pid, cmd->ppid);
-    int ret = 0;
-    char *err_msg;
-    int err = sqlite3_exec(db, buf, NULL, NULL, &err_msg);
-    if (err != SQLITE_OK) {
-        LOG_ERROR("sqlite3_exec: %s", err_msg);
-        ret = -1;
-    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "INSERT INTO command(time,command,pcid,pid,ppid) VALUES(?,?,?,?,?);";
+    sqlite3_prepare_v2(db, sql, strlen(sql), &stmt, NULL);
+    
+    sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    sqlite3_bind_text(stmt, 1, time_str, -1, NULL);
+    sqlite3_bind_text(stmt, 2, cmd_str, -1, NULL);
+    sqlite3_bind_int(stmt, 3, cmd->pcid);
+    sqlite3_bind_int(stmt, 4, cmd->pid);
+    sqlite3_bind_int(stmt, 5, cmd->ppid);
+    sqlite3_step(stmt);
+    sqlite3_reset(stmt);
+    sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+
+    sqlite3_finalize(stmt);
     free(cmd_str);
-    free(buf);
-    return ret;
+    return 0;
 }
 
 int bt_get_command_id(sqlite3 *db) {

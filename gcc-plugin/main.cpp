@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,8 @@ static int gCmdId = -1;
 static std::string gWorkDir;
 static FileManager gFileMgr;
 
+#define Error(line) cerr << "error@" << line << endl
+
 Symbol *CreateSymbol(symtab_node *node) {
     if (node == nullptr || node->decl == nullptr) {
         return nullptr;
@@ -50,11 +53,14 @@ Symbol *CreateSymbol(symtab_node *node) {
     if (!sym->isBuiltin) {
         const char *file = DECL_SOURCE_FILE(node->decl);
         if (file != nullptr) {
-            sym->file_id = gFileMgr.Insert(file);
+            sym->file = file;
+            sym->file_id = gFileMgr.Insert(sym->file);
         }
         sym->line = DECL_SOURCE_LINE(node->decl);
     } else {
-        sym->file_id = gFileMgr.Insert("<built-in>");
+
+        sym->file = "<built-in>";
+        sym->file_id = gFileMgr.Insert(sym->file);
     }
     sym->asmname = node->asm_name();
     sym->name = Symbol::Demangle(sym->asmname);
@@ -89,6 +95,30 @@ void BeginAnalysis(void *event, void *user_data) {
             }
         }
     }
+}
+
+void Dump(void *event, void *user_data) {
+    auto dumpSym = [](Symbol *sym) {
+        if (sym == nullptr) {
+            Error(__LINE__);
+            return;
+        }
+        cout << sym->DumpStr() << endl;
+        const auto *refs = gSymRefTable.GetRefs(sym->id);
+        if (refs == nullptr) {
+            return;
+        }
+        for (uint32_t rsid : *refs) {
+            Symbol *refSym = gSymbolTable.GetSymbol(rsid);
+            if (refSym == nullptr) {
+                Error(__LINE__);
+                continue;
+            }
+            cout << "\t\t" << refSym->DumpStr() << endl;
+        }
+    };
+
+    gSymbolTable.ForEachSymbol(dumpSym);
 }
 
 void EndAnalysis(void *event, void *user_data) {
@@ -158,7 +188,7 @@ int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gcc_version 
     const char *const plugin_name = plugin_info->base_name;
     register_callback(plugin_name, PLUGIN_INCLUDE_FILE, FileIncluded, NULL);
     register_callback(plugin_name, PLUGIN_ALL_IPA_PASSES_START, BeginAnalysis, NULL);
-    register_callback(plugin_name, PLUGIN_ALL_IPA_PASSES_END, EndAnalysis, NULL);
+    register_callback(plugin_name, PLUGIN_ALL_IPA_PASSES_END, Dump, NULL);
 
     return 0;
 }
